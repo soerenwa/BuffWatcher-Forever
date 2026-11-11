@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="70%">
+      <stop offset="0" stop-color="#2a1f12"/>
+      <stop offset="0.55" stop-color="#15100a"/>
+      <stop offset="1" stop-color="#090705"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3c66b"/>
+      <stop offset="1" stop-color="#9a6b26"/>
+    </linearGradient>
+    <linearGradient id="arc" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd27a"/>
+      <stop offset="1" stop-color="#e8871e"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="55%" r="50%">
+      <stop offset="0" stop-color="#ff9a2e" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff9a2e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="flameOuter" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#d9480f"/>
+      <stop offset="0.6" stop-color="#f7931e"/>
+      <stop offset="1" stop-color="#ffc94d"/>
+    </linearGradient>
+    <linearGradient id="flameInner" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#ffd54a"/>
+      <stop offset="1" stop-color="#fff6c8"/>
+    </linearGradient>
+    <clipPath id="eyeClip">
+      <path d="M96 262 Q256 112 416 262 Q256 412 96 262 Z"/>
+    </clipPath>
+  </defs>
+
+  <!-- panel -->
+  <rect x="8" y="8" width="496" height="496" rx="84" fill="url(#bg)"/>
+  <rect x="8" y="8" width="496" height="496" rx="84" fill="none" stroke="url(#gold)" stroke-width="10"/>
+  <rect x="26" y="26" width="460" height="460" rx="68" fill="none" stroke="#f3c66b" stroke-opacity="0.18" stroke-width="3"/>
+
+  <!-- timer ring: track + remaining time (like a buff running out) -->
+  <circle cx="256" cy="262" r="196" fill="none" stroke="#000" stroke-opacity="0.45" stroke-width="26"/>
+  <circle cx="256" cy="262" r="196" fill="none" stroke="#3a2c18" stroke-width="18"/>
+  <circle cx="256" cy="262" r="196" fill="none" stroke="url(#arc)" stroke-width="18" stroke-linecap="round"
+          stroke-dasharray="923.6 1231.5" transform="rotate(-90 256 262)"/>
+  <!-- tick at the end of the arc -->
+  <circle cx="60" cy="262" r="13" fill="#fff1c4"/>
+
+  <!-- glow behind the eye -->
+  <circle cx="256" cy="266" r="150" fill="url(#glow)"/>
+
+  <!-- eye -->
+  <path d="M96 262 Q256 112 416 262 Q256 412 96 262 Z" fill="#120d08"/>
+  <g clip-path="url(#eyeClip)">
+    <circle cx="256" cy="262" r="86" fill="#2b1d0e"/>
+    <circle cx="256" cy="262" r="86" fill="none" stroke="#e8871e" stroke-opacity="0.55" stroke-width="6"/>
+    <!-- flame as pupil -->
+    <path d="M256 168 C272 204 314 222 308 270 C304 306 282 326 256 326 C230 326 208 306 204 272
+             C200 240 222 226 230 206 C236 222 244 230 252 232 C248 210 250 188 256 168 Z" fill="url(#flameOuter)"/>
+    <path d="M258 222 C266 244 288 256 284 284 C281 304 270 314 256 314 C242 314 230 304 229 288
+             C228 270 240 262 244 250 C248 260 252 264 256 265 C254 250 254 236 258 222 Z" fill="url(#flameInner)"/>
+  </g>
+  <path d="M96 262 Q256 112 416 262 Q256 412 96 262 Z" fill="none" stroke="url(#gold)" stroke-width="12" stroke-linejoin="round"/>
+  <!-- glint -->
+  <circle cx="300" cy="222" r="9" fill="#fff6dc" fill-opacity="0.9"/>
+</svg>
