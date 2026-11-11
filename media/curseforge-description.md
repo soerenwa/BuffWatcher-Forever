@@ -1,6 +1,6 @@
-# BuffWatch
+# BuffWatcher Forever
 
-**Never pull without your buffs again.** BuffWatch is a small, clean buff tracker for **World of Warcraft: Forever**. One look tells you whether you are Well Fed, have your Campfire buff, your Sleeping Bag XP bonus and every class buff your party can give you.
+**Never pull without your buffs again.** BuffWatcher is a small, clean buff tracker for **World of Warcraft: Forever**. One look tells you whether you are Well Fed, have your Campfire buff, your Sleeping Bag XP bonus and every class buff your party can give you.
 
 White means active, red means missing. When everything is up, the panel turns green.
 
@@ -14,7 +14,7 @@ White means active, red means missing. When everything is up, the panel turns gr
 - **Sleeping Bag:** shows your XP bonus and the time left. The row turns orange when less than an hour is left, so you know the bag can be used again. While you lie in the bag, a bar counts down to the next Well-Rested refresh. At max level the row is hidden by default, since the XP bonus does nothing there.
 
 ### Party Buffs
-In a party (not in raids), BuffWatch checks the class buffs your group can actually give you:
+In a party (not in raids), BuffWatcher checks the class buffs your group can actually give you:
 
 - **Fortitude** (Priest)
 - **Mark of the Wild** (Druid)
@@ -39,7 +39,7 @@ Open the grid from the header bar to see **who in your party has which buff**. H
 - **Classic:** the familiar Blizzard tooltip look.
 
 ## Options
-Click the buttons in the header bar or type **/bw**.
+Click the buttons in the header bar or type **/bw** (or **/buffwatcher**).
 
 - Lock the panel
 - Horizontal or vertical layout
@@ -53,9 +53,9 @@ Click the buttons in the header bar or type **/bw**.
 ---
 
 ## Good to know
-- **Combat:** WoW Forever does not let addons read buffs during combat. BuffWatch keeps the last known state, counts down from it and updates again right after combat.
+- **Combat:** WoW Forever does not let addons read buffs during combat. BuffWatcher keeps the last known state, counts down from it and updates again right after combat.
 - Party members who are offline or out of range show `?` in the grid.
-- Buff names are matched in English, so BuffWatch works with the **English (enUS) client**.
+- Buff names are matched in English, so BuffWatcher works with the **English (enUS) client**.
 
 ## Feedback
 Found a bug or have an idea? Open an issue on [GitHub](https://github.com/soerenwa/BuffWatch/issues).

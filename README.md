@@ -1,4 +1,4 @@
-# BuffWatch
+# BuffWatcher Forever
 
 A small, clean buff tracker for **World of Warcraft: Forever**. One look tells you whether you are Well Fed, have your Campfire buff, your Sleeping Bag XP bonus and every class buff your party can give you.
 
@@ -18,7 +18,7 @@ A small, clean buff tracker for **World of Warcraft: Forever**. One look tells y
 ## Usage
 
 - Drag the panel to move it, unless it is locked.
-- Use the buttons in the header bar, or type `/bw` to open the options.
+- Use the buttons in the header bar, or type `/bw` (or `/buffwatcher`) to open the options.
 
 ### Options
 
@@ -34,7 +34,7 @@ A small, clean buff tracker for **World of Warcraft: Forever**. One look tells y
 
 ## Good to know
 
-- WoW Forever does not let addons read buffs during combat. BuffWatch keeps the last known state, counts down from it and updates again right after combat.
+- WoW Forever does not let addons read buffs during combat. BuffWatcher keeps the last known state, counts down from it and updates again right after combat.
 - Party members who are offline or out of range show `?` in the grid.
 - Buff names are matched in English (enUS client).
 

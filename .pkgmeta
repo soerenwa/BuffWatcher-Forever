@@ -1,4 +1,4 @@
-package-as: BuffWatch
+package-as: BuffWatcher-Forever
 
 ignore:
   - media

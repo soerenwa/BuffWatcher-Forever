@@ -1,4 +1,4 @@
--- BuffWatch: shows Well Fed, Camp Benefits, the Sleeping Bag buff and party
+-- BuffWatcher Forever: shows Well Fed, Camp Benefits, the Sleeping Bag buff and party
 -- buffs at a glance (WoW Forever).
 --
 -- Forever uses the Midnight addon rules: aura data is "secret" (unreadable) in
@@ -174,7 +174,7 @@ local THEMES = {
     panel = { 0.07, 0.06, 0.05, 0.92 }, complete = { 0.06, 0.2, 0.08, 0.92 },
     border = { 0.62, 0.47, 0.22, 1 }, header = { 0.13, 0.10, 0.06, 1 }, headerLine = { 0.62, 0.47, 0.22, 1 },
     separator = { 0.62, 0.47, 0.22, 0.25 }, row = { 1, 0.8, 0.5, 0.03 }, accent = { 0.93, 0.6, 0.18, 1 },
-    title = { 0.95, 0.72, 0.3 }, titleText = "BuffWatch",
+    title = { 0.95, 0.72, 0.3 }, titleText = "BuffWatcher",
     showMark = true, showBar = true,
     barTexture = "Interface\\TargetingFrame\\UI-StatusBar", barColor = { 0.15, 0.42, 0.95, 1 },
     font = nil,
@@ -200,7 +200,7 @@ local THEMES = {
     panel = { 0.04, 0.04, 0.05, 0.9 }, complete = { 0.04, 0.22, 0.06, 0.9 },
     border = { 0.8, 0.8, 0.8, 1 }, header = { 0, 0, 0, 0 }, headerLine = { 1, 0.82, 0, 0.35 },
     separator = { 1, 0.82, 0, 0.15 }, row = { 0, 0, 0, 0 }, accent = { 1, 0.82, 0, 1 },
-    title = { 1, 0.82, 0 }, titleText = "BuffWatch",
+    title = { 1, 0.82, 0 }, titleText = "BuffWatcher",
     showMark = false, showBar = false,
     barTexture = "Interface\\TargetingFrame\\UI-StatusBar", font = "Fonts\\FRIZQT__.TTF",
   },
@@ -245,7 +245,7 @@ local frame
 ---------------------------------------------------------------------------
 
 local function Print(msg)
-  DEFAULT_CHAT_FRAME:AddMessage("|cff8f6bfaBuffWatch|r: " .. msg)
+  DEFAULT_CHAT_FRAME:AddMessage("|cff8f6bfaBuffWatcher|r: " .. msg)
 end
 
 local function AurasSecret()
@@ -894,7 +894,7 @@ local function StatusLine(s)
 end
 
 local function CreateMainFrame()
-  frame = CreateFrame("Frame", "BuffWatchFrame", UIParent, "BackdropTemplate")
+  frame = CreateFrame("Frame", "BuffWatcherForeverFrame", UIParent, "BackdropTemplate")
   frame:SetSize(PANEL_WIDTH, 2 + #TRACKERS * ROW_HEIGHT)
   frame:SetFrameStrata("MEDIUM")
   frame:SetClampedToScreen(true)
@@ -915,7 +915,7 @@ local function CreateMainFrame()
   end
   frame:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:AddLine("BuffWatch")
+    GameTooltip:AddLine("BuffWatcher Forever")
     for _, t in ipairs(TRACKERS) do
       GameTooltip:AddDoubleLine(t.label, StatusLine(state[t.key]), 1, 1, 1, 1, 1, 1)
     end
@@ -1372,7 +1372,7 @@ local function UpdateGrid()
 end
 
 local function CreateGrid()
-  grid = CreateFrame("Frame", "BuffWatchGrid", UIParent, "BackdropTemplate")
+  grid = CreateFrame("Frame", "BuffWatcherForeverGrid", UIParent, "BackdropTemplate")
   grid.headers, grid.rows = {}, {}
   grid:SetPoint("TOPLEFT", frame, "TOPRIGHT", 6, 0)
   grid:SetFrameStrata("MEDIUM")
@@ -1609,7 +1609,7 @@ end
 
 -- Options menu below the panel, in the same style: header bar, checkboxes, sliders.
 local function CreateOptions()
-  options = CreateFrame("Frame", "BuffWatchOptions", UIParent, "BackdropTemplate")
+  options = CreateFrame("Frame", "BuffWatcherForeverOptions", UIParent, "BackdropTemplate")
   options:SetWidth(OPTIONS_WIDTH)
   PlaceOptions()
   options:SetFrameStrata("HIGH")
@@ -1732,7 +1732,7 @@ end
 -- Header buttons, right to left: party grid, options, layout direction, lock.
 local function CreateHeaderButtons()
   -- Party grid at the far right: larger, framed and filled so it reads as a button.
-  local gridButton = CreateHeaderButton("BuffWatchGridButton", function()
+  local gridButton = CreateHeaderButton("BuffWatcherForeverGridButton", function()
     return "Party buff grid", "Who in your party has which buff"
   end, ToggleGrid, true)
   for row = 0, 2 do
@@ -1741,7 +1741,7 @@ local function CreateHeaderButtons()
   gridButton.isActive = function() return grid ~= nil and grid:IsShown() end
 
   -- Three slider lines with knobs.
-  local optionsButton = CreateHeaderButton("BuffWatchOptionsButton", function()
+  local optionsButton = CreateHeaderButton("BuffWatcherForeverOptionsButton", function()
     return "Options"
   end, ToggleOptions)
   for i = 0, 2 do
@@ -1751,7 +1751,7 @@ local function CreateHeaderButtons()
   optionsButton.isActive = function() return options ~= nil and options:IsShown() end
 
   -- Three bars: stacked rows in vertical mode, side-by-side columns in horizontal.
-  local layoutButton = CreateHeaderButton("BuffWatchLayoutButton", function()
+  local layoutButton = CreateHeaderButton("BuffWatcherForeverLayoutButton", function()
     return db.horizontal and "Switch to vertical" or "Switch to horizontal"
   end, ToggleLayout)
   for _ = 1, 3 do AddPart(layoutButton, 1, 1, 0, 0) end
@@ -1766,7 +1766,7 @@ local function CreateHeaderButtons()
   end
 
   -- Padlock: body plus shackle; the shackle lifts and opens when unlocked.
-  local lockButton = CreateHeaderButton("BuffWatchLockButton", function()
+  local lockButton = CreateHeaderButton("BuffWatcherForeverLockButton", function()
     return db.locked and "Unlock panel" or "Lock panel", db.locked and "Panel can't be moved" or "Drag the panel to move it"
   end, ToggleLock)
   lockButton.body = AddPart(lockButton, 9, 6, -4, 0)
@@ -1893,8 +1893,8 @@ events:RegisterEvent("PLAYER_UPDATE_RESTING")
 events:SetScript("OnEvent", function(_, event, arg1)
   if event == "ADDON_LOADED" then
     if arg1 ~= ADDON then return end
-    BuffWatchDB = BuffWatchDB or {}
-    db = BuffWatchDB
+    BuffWatcherForeverDB = BuffWatcherForeverDB or {}
+    db = BuffWatcherForeverDB
     CopyDefaults(DEFAULTS, db)
     db.extra = nil -- custom buff names were removed in 1.5
     for _, t in ipairs(TRACKERS) do
@@ -1903,8 +1903,9 @@ events:SetScript("OnEvent", function(_, event, arg1)
     CreateMainFrame()
     CreateHeaderButtons()
     ApplyTheme()
-    SLASH_BUFFWATCH1 = "/bw"
-    SlashCmdList.BUFFWATCH = Slash
+    SLASH_BUFFWATCHERFOREVER1 = "/bw"
+    SLASH_BUFFWATCHERFOREVER2 = "/buffwatcher"
+    SlashCmdList.BUFFWATCHERFOREVER = Slash
     C_Timer.NewTicker(1, Refresh)
     Refresh()
     events:UnregisterEvent("ADDON_LOADED")
