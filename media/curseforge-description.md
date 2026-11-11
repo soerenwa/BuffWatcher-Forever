@@ -58,4 +58,4 @@ Click the buttons in the header bar or type **/bw** (or **/buffwatcher**).
 - Buff names are matched in English, so BuffWatcher works with the **English (enUS) client**.
 
 ## Feedback
-Found a bug or have an idea? Open an issue on [GitHub](https://github.com/soerenwa/BuffWatch/issues).
+Found a bug or have an idea? Open an issue on [GitHub](https://github.com/soerenwa/BuffWatcher-Forever/issues).

@@ -44,4 +44,4 @@ World of Warcraft: Forever (Interface 16001).
 
 ## Feedback
 
-Bugs and ideas: [GitHub issues](https://github.com/soerenwa/BuffWatch/issues)
+Bugs and ideas: [GitHub issues](https://github.com/soerenwa/BuffWatcher-Forever/issues)
