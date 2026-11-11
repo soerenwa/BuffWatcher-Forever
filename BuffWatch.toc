@@ -1,0 +1,8 @@
+## Interface: 16001
+## Title: BuffWatch
+## Notes: Shows Well Fed, Camp Benefits, the Sleeping Bag buff and party buffs.
+## Author: soeren
+## Version: 1.12.0
+## SavedVariables: BuffWatchDB
+
+BuffWatch.lua
