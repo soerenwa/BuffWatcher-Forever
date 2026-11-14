@@ -8,6 +8,7 @@ A small, clean buff tracker for **World of Warcraft: Forever**. One look tells y
 - **Stats at a glance.** Each active buff shows what it gives, read from its tooltip, for example `25 Str, 10 Sta` or `3% XP, 1h 12m left`.
 - **Green panel** when all your buffs are up.
 - **Sleeping Bag timer.** While you lie in the bag, a bar counts down to the next Well-Rested refresh.
+- **Campfire timer.** While you sit at a campfire, a bar under the Campfire row counts down until Camp Benefits arrives.
 - **Party Buffs row** (party only, not in raids). It checks Fortitude, Mark of the Wild, Arcane Intellect, one Blessing per Paladin and Battle Shout. Battle Shout counts for melee only, including Druids in Cat or Bear Form.
 - **Party grid.** Shows who in your party has which buff. Hover a cell for the time left. A check turns orange when less than 20% of a buff's duration is left.
 - **Campfire overlap.** Camp objects don't stack with the matching class buff, and the class buff is always stronger. Campfire stats that are already covered are shown in grey.
