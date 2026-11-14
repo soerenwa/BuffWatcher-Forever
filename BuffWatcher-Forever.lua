@@ -161,6 +161,11 @@ local COLOR_BAR            = { 0.56, 0.42, 0.98, 1 }
 local COLOR_PRESENT        = { 1, 1, 1 }
 local COLOR_MISSING        = { 1, 0.25, 0.25 }
 local COLOR_SOON           = { 1, 0.6, 0.15 }
+-- Row background while a buff is up: green when fresh, fading to orange as
+-- its remaining time runs down (relative to its full duration).
+local COLOR_FILL_FRESH     = { 0.12, 0.62, 0.22 }
+local COLOR_FILL_LOW       = { 0.95, 0.5, 0.08 }
+local FILL_ALPHA           = 0.32
 
 -- Window styles. Text colours (white / red / orange) stay the same in both;
 -- a style only changes the chrome. The COLOR_* tables above are filled in
@@ -228,7 +233,7 @@ local function ThemeFont(fontString, size)
   fontString:SetFont(Theme().font or (fontString:GetFont()), size, "")
 end
 local state = {}        -- key -> { active, expires, icon, name, pendingExpires, warned }
-local groupPresent = {} -- group buff key -> list of expiration times (0 = permanent)
+local groupPresent = {} -- group buff key -> list of { expires, duration } (expires 0 = permanent)
 local sleep = { active = false, cycleStart = 0, expires = 0, duration = 0, lastRefresh = nil,
   restStart = nil, wasResting = nil }
 local scannedBefore = false
@@ -540,7 +545,9 @@ local function Scan()
     for _, b in ipairs(GROUP_BUFFS) do
       if name and b.names[name] then
         present[b.key] = present[b.key] or {}
-        table.insert(present[b.key], (expirationTime and expirationTime > 0) and expirationTime or 0)
+        table.insert(present[b.key], {
+          expires = (expirationTime and expirationTime > 0) and expirationTime or 0,
+          duration = (not IsSecret(duration)) and duration or 0 })
       end
     end
     for _, t in ipairs(TRACKERS) do
@@ -550,6 +557,7 @@ local function Scan()
         -- With several matches keep the longest running one (0 = permanent).
         if not cur or exp == 0 or (cur.expires ~= 0 and exp > cur.expires) then
           found[t.key] = { expires = exp, icon = icon, name = name, index = index,
+            duration = (not IsSecret(duration)) and duration or 0,
             count = (not IsSecret(count)) and count or nil }
         end
       elseif t.pendingNames and name and t.pendingNames[name]
@@ -587,11 +595,21 @@ local function Scan()
         if sleep.active then sleep.cycleStart = now end
       end
       if not s.active or f.expires ~= s.expires then s.warned = false end
+      -- Full duration for the background colour. Without one from the aura, use
+      -- the longest remaining time seen since the buff was (re)applied.
+      local duration = f.duration or 0
+      if duration <= 0 and f.expires > 0 then
+        local left = f.expires - now
+        duration = (s.active and f.expires <= s.expires + 30 and s.duration or 0)
+        duration = math.max(duration, left)
+      end
+      s.duration = duration
       s.active, s.expires, s.icon, s.name, s.count = true, f.expires, f.icon, f.name, f.count
       s.value, s.parts = value, parts
     else
       if s.active then OnExpired(t) end
       s.active, s.expires, s.name, s.value, s.parts = false, 0, nil, nil, nil
+      s.duration = 0
     end
     s.pendingExpires = pending[t.key]
   end
@@ -796,6 +814,28 @@ local function TrackerVisible(t)
   return not HiddenAtMax(t, "player")
 end
 
+-- Share of a buff's duration still left: 1 for permanent or unknown, 0..1 else.
+local function RemainingFraction(expires, duration, now)
+  if not expires or expires == 0 or not duration or duration <= 0 then return 1 end
+  return math.max(0, math.min(1, (expires - now) / duration))
+end
+
+-- Row background: nil = no buff (the plain theme row), otherwise a colour
+-- between green (fraction 1) and orange (fraction 0).
+local function SetRowFill(row, fraction)
+  if not fraction then
+    row.bg:SetColorTexture(unpack(COLOR_ROW))
+    return
+  end
+  local a, b = COLOR_FILL_FRESH, COLOR_FILL_LOW
+  local f = fraction
+  row.bg:SetColorTexture(
+    b[1] + (a[1] - b[1]) * f,
+    b[2] + (a[2] - b[2]) * f,
+    b[3] + (a[3] - b[3]) * f,
+    FILL_ALPHA)
+end
+
 local function ApplyLook(row, color, iconTexture, value)
   row.label:SetTextColor(unpack(color))
   row.icon:SetTexture(iconTexture)
@@ -844,11 +884,15 @@ local function PartyBuffStatus()
     local casters = counts[b.class] or 0
     if casters > 0 and b.usefulFor(myClass) then
       local have = 0
-      for _, expires in ipairs(groupPresent[b.key] or {}) do
-        if expires == 0 or expires > now then have = have + 1 end
+      local fraction = 1
+      for _, aura in ipairs(groupPresent[b.key] or {}) do
+        if aura.expires == 0 or aura.expires > now then
+          have = have + 1
+          fraction = math.min(fraction, RemainingFraction(aura.expires, aura.duration, now))
+        end
       end
       local want = b.perCaster and casters or 1
-      items[#items + 1] = { buff = b, have = math.min(have, want), want = want }
+      items[#items + 1] = { buff = b, have = math.min(have, want), want = want, fraction = fraction }
     end
   end
   if #items == 0 then return nil end
@@ -865,7 +909,9 @@ local function UpdatePartyRow()
   row:Show()
 
   local missing = {}
+  local fraction = 1 -- the party buff closest to running out sets the colour
   for _, item in ipairs(items) do
+    fraction = math.min(fraction, item.fraction)
     if item.have < item.want then
       missing[#missing + 1] = item.want > 1
         and string.format("%s %d/%d", item.buff.short, item.have, item.want)
@@ -875,9 +921,11 @@ local function UpdatePartyRow()
 
   if #missing > 0 then
     ApplyLook(row, COLOR_MISSING, GROUP_ROW_ICON, "Missing: " .. table.concat(missing, ", "))
+    SetRowFill(row, nil)
     return false
   end
   ApplyLook(row, COLOR_PRESENT, GROUP_ROW_ICON, string.format("All %d active", #items))
+  SetRowFill(row, fraction)
   return true
 end
 
@@ -996,6 +1044,7 @@ function Refresh()
       local soon = t.soonBelow and s.expires > 0 and s.expires - now < t.soonBelow
       ApplyLook(row, soon and COLOR_SOON or COLOR_PRESENT, s.icon or t.defaultIcon,
         t.value and t.value(s, now) or (t.campOverlap and FormatCampParts(s.parts)) or s.value)
+      SetRowFill(row, RemainingFraction(s.expires, s.duration, now))
       if soon then allGood = false end
       if s.expires > 0 then
         local left = s.expires - now
@@ -1012,6 +1061,7 @@ function Refresh()
       allGood = false
       if not t.keepsPanelColor then allPresent = false end
       ApplyLook(row, COLOR_MISSING, t.defaultIcon)
+      SetRowFill(row, nil)
     end
   end
 
@@ -1898,7 +1948,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
     CopyDefaults(DEFAULTS, db)
     db.extra = nil -- custom buff names were removed in 1.5
     for _, t in ipairs(TRACKERS) do
-      state[t.key] = { active = false, expires = 0 }
+      state[t.key] = { active = false, expires = 0, duration = 0 }
     end
     CreateMainFrame()
     CreateHeaderButtons()
