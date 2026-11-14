@@ -227,12 +227,14 @@ local function ThemeFont(fontString, size)
   themedFonts[#themedFonts + 1] = { fs = fontString, size = size, default = (fontString:GetFont()) }
   fontString:SetFont(Theme().font or (fontString:GetFont()), size, "")
 end
-local state = {}        -- key -> { active, expires, icon, name, pendingExpires, warned }
+local state = {}        -- key -> { active, expires, icon, name, pendingExpires, pendingDuration, warned }
 local groupPresent = {} -- group buff key -> list of expiration times (0 = permanent)
 local sleep = { active = false, cycleStart = 0, expires = 0, duration = 0, lastRefresh = nil,
   restStart = nil, wasResting = nil }
 local scannedBefore = false
 local sleepRow
+local campRow -- countdown bar under the Campfire row until Camp Benefits arrives
+local timerRows = {} -- sleepRow and campRow
 local headerButtons = {}
 local options -- options menu, created on first use
 local UpdateHeaderButtons -- defined with the header buttons
@@ -508,6 +510,15 @@ local function SleepRemaining(now)
   return SLEEP_CYCLE - elapsed, SLEEP_CYCLE
 end
 
+-- Seconds until Camp Benefits arrives while sitting at the campfire, and the
+-- length of the countdown; nil when no countdown runs.
+local function CampPendingRemaining(now)
+  local s = state.camp
+  if not (s and s.pendingExpires and s.pendingExpires > now) then return nil end
+  local total = (s.pendingDuration and s.pendingDuration > 0) and s.pendingDuration or 60
+  return s.pendingExpires - now, total
+end
+
 ---------------------------------------------------------------------------
 -- Scanning
 ---------------------------------------------------------------------------
@@ -534,6 +545,15 @@ local function Scan()
       sleepAura = { expires = expirationTime or 0, duration = duration or 0 }
     end
   end
+  -- The short countdown aura before a buff arrives (sitting at the campfire).
+  -- Matched by name, or for the campfire by any short aura with "camp" in it.
+  local function NotePending(t, name, expirationTime, duration)
+    if not (t.pendingNames and name and duration and duration > 0 and duration <= 120
+      and expirationTime and expirationTime > 0) then return end
+    if t.pendingNames[name] or (t.key == "camp" and name:lower():find("camp")) then
+      pending[t.key] = { expires = expirationTime, duration = duration }
+    end
+  end
   local ok = ForEachBuff(function(name, icon, expirationTime, duration, spellId, index, count)
     if name then names[name] = true end
     NoteSleep(name, expirationTime, duration)
@@ -552,14 +572,18 @@ local function Scan()
           found[t.key] = { expires = exp, icon = icon, name = name, index = index,
             count = (not IsSecret(count)) and count or nil }
         end
-      elseif t.pendingNames and name and t.pendingNames[name]
-        and duration and duration > 0 and duration <= 120 then
-        pending[t.key] = expirationTime
+      else
+        NotePending(t, name, expirationTime, duration)
       end
     end
   end)
   if not ok then return end -- secret, keep the old state
-  ForEachBuff(function(name, _, expirationTime, duration) NoteSleep(name, expirationTime, duration) end, "HARMFUL")
+  ForEachBuff(function(name, icon, expirationTime, duration, spellId)
+    NoteSleep(name, expirationTime, duration)
+    for _, t in ipairs(TRACKERS) do
+      if not Matches(t, name, icon, spellId) then NotePending(t, name, expirationTime, duration) end
+    end
+  end, "HARMFUL")
 
   local now = GetTime()
   local wasSleeping = sleep.active
@@ -593,7 +617,8 @@ local function Scan()
       if s.active then OnExpired(t) end
       s.active, s.expires, s.name, s.value, s.parts = false, 0, nil, nil, nil
     end
-    s.pendingExpires = pending[t.key]
+    local p = pending[t.key]
+    s.pendingExpires, s.pendingDuration = p and p.expires, p and p.duration
   end
   scannedBefore = true
   Refresh()
@@ -662,10 +687,14 @@ local function CreateRow(t)
   return row
 end
 
--- Thin countdown bar right under the Sleeping Bag row, shown while lying in it.
-local function CreateSleepRow(below)
+-- Thin countdown bar right under a row: under the Sleeping Bag while lying in
+-- it, under the Campfire while sitting at the fire until Camp Benefits arrives.
+-- remaining(now) returns seconds left and the full length, or nil.
+local function CreateTimerRow(below, remaining, label)
   local row = CreateFrame("Frame", nil, frame)
   row.rowHeight, row.hasLine = SLEEP_ROW_HEIGHT, false
+  row.below, row.remaining = below, remaining
+  timerRows[#timerRows + 1] = row
   row:SetHeight(SLEEP_ROW_HEIGHT)
 
   row.bg = row:CreateTexture(nil, "BACKGROUND")
@@ -690,10 +719,10 @@ local function CreateSleepRow(below)
   row.text:SetPoint("CENTER")
 
   row:SetScript("OnUpdate", function(self)
-    local left, total = SleepRemaining(GetTime())
+    local left, total = self.remaining(GetTime())
     if left then
       self.bar:SetValue(left / total)
-      self.text:SetText("Refresh in " .. FormatTime(left))
+      self.text:SetText(label .. FormatTime(left))
     end
   end)
 
@@ -736,11 +765,11 @@ local function Layout()
   local minWidth = math.max(PANEL_WIDTH, HeaderMinWidth())
   local visible = {}
   for _, row in ipairs(rowOrder) do
-    if row:IsShown() and row ~= sleepRow then visible[#visible + 1] = row end
+    if row:IsShown() and not row.below then visible[#visible + 1] = row end
   end
 
   if db.horizontal then
-    local x, bagX, bagW = 0, nil, nil
+    local x, cells = 0, {}
     for i, row in ipairs(visible) do
       local w = RowWidth(row)
       if i == #visible then w = math.max(w, minWidth - edge - x) end -- last cell fills up
@@ -749,15 +778,18 @@ local function Layout()
       row:SetWidth(w)
       row.line:Hide()
       if i > 1 then row.vline:Show() else row.vline:Hide() end
-      if row == rows.bag then bagX, bagW = x, w end
+      cells[row] = { x = x, w = w }
       x = x + w
     end
     local height = ROW_HEIGHT
-    if sleepRow:IsShown() and bagX then
-      sleepRow:ClearAllPoints()
-      sleepRow:SetPoint("TOPLEFT", frame, "TOPLEFT", inset + bagX, top - ROW_HEIGHT)
-      sleepRow:SetWidth(bagW)
-      height = height + SLEEP_ROW_HEIGHT
+    for _, timer in ipairs(timerRows) do
+      local cell = cells[timer.below]
+      if timer:IsShown() and cell then
+        timer:ClearAllPoints()
+        timer:SetPoint("TOPLEFT", frame, "TOPLEFT", inset + cell.x, top - ROW_HEIGHT)
+        timer:SetWidth(cell.w)
+        height = ROW_HEIGHT + SLEEP_ROW_HEIGHT
+      end
     end
     SetPanelSize(math.max(minWidth, edge + x), edge + HEADER_HEIGHT + height)
     return
@@ -941,7 +973,8 @@ local function CreateMainFrame()
 
   for _, t in ipairs(TRACKERS) do rows[t.key] = CreateRow(t) end
   rows.party = CreateRow({ label = "Party Buffs" })
-  sleepRow = CreateSleepRow(rows.bag)
+  sleepRow = CreateTimerRow(rows.bag, SleepRemaining, "Refresh in ")
+  campRow = CreateTimerRow(rows.camp, CampPendingRemaining, "Buff in ")
 
   -- Header bar: a small accent mark and the title on the left, buttons on the right.
   local header = CreateFrame("Frame", nil, frame)
@@ -1017,6 +1050,7 @@ function Refresh()
 
   UpdateResting(now)
   if rows.bag:IsShown() and SleepRemaining(now) then sleepRow:Show() else sleepRow:Hide() end
+  if rows.camp:IsShown() and CampPendingRemaining(now) then campRow:Show() else campRow:Hide() end
   if not UpdatePartyRow() then allGood, allPresent = false, false end
   frame:SetBackdropColor(unpack(allPresent and COLOR_PANEL_COMPLETE or COLOR_PANEL))
   Layout()
@@ -1840,8 +1874,10 @@ ApplyTheme = function()
       row.vline:SetColorTexture(unpack(COLOR_SEPARATOR))
     end
   end
-  sleepRow.bar:SetStatusBarTexture(theme.barTexture)
-  sleepRow.bar:SetStatusBarColor(unpack(theme.barColor or COLOR_BAR))
+  for _, timer in ipairs(timerRows) do
+    timer.bar:SetStatusBarTexture(theme.barTexture)
+    timer.bar:SetStatusBarColor(unpack(theme.barColor or COLOR_BAR))
+  end
 
   if grid then
     Chrome(grid)
