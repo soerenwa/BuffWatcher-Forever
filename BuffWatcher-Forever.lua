@@ -566,6 +566,16 @@ local function Scan()
       sleepAura = { expires = expirationTime or 0, duration = duration or 0 }
     end
   end
+  -- The countdown aura before a buff arrives (sitting at the campfire): by its
+  -- known name, or for the campfire any short aura with "camp" in its name, in
+  -- case Forever names it differently. Buff or debuff.
+  local function NotePending(t, name, expirationTime, duration)
+    if not (t.pendingNames and name) then return end
+    local short = duration and duration > 0 and duration <= 120
+    if t.pendingNames[name] or (t.key == "camp" and short and name:lower():find("camp")) then
+      pending[t.key] = { expires = expirationTime or 0, duration = duration or 0 }
+    end
+  end
   local ok = ForEachBuff(function(name, icon, expirationTime, duration, spellId, index, count)
     if name then names[name] = true end
     NoteSleep(name, expirationTime, duration)
@@ -584,13 +594,18 @@ local function Scan()
           found[t.key] = { expires = exp, icon = icon, name = name, index = index,
             count = (not IsSecret(count)) and count or nil }
         end
-      elseif t.pendingNames and name and t.pendingNames[name] then
-        pending[t.key] = { expires = expirationTime or 0, duration = duration or 0 }
+      else
+        NotePending(t, name, expirationTime, duration)
       end
     end
   end)
   if not ok then return end -- secret, keep the old state
-  ForEachBuff(function(name, _, expirationTime, duration) NoteSleep(name, expirationTime, duration) end, "HARMFUL")
+  ForEachBuff(function(name, icon, expirationTime, duration, spellId)
+    NoteSleep(name, expirationTime, duration)
+    for _, t in ipairs(TRACKERS) do
+      if not Matches(t, name, icon, spellId) then NotePending(t, name, expirationTime, duration) end
+    end
+  end, "HARMFUL")
 
   local now = GetTime()
   local wasSleeping = sleep.active
