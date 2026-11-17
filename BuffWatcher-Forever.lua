@@ -1,5 +1,5 @@
--- BuffWatcher Forever: shows Well Fed, Camp Benefits, the Sleeping Bag buff and party
--- buffs at a glance (WoW Forever).
+-- BuffWatcher Forever: shows Well Fed, Camp Benefits (Flask / Elixir in raids), the
+-- Sleeping Bag buff and party or raid buffs at a glance (WoW Forever).
 --
 -- Forever uses the Midnight addon rules: aura data is "secret" (unreadable) in
 -- combat. So buffs are only scanned while auras are readable; in combat the last
@@ -29,6 +29,70 @@ local WELL_FED_IDS = {
 }
 local WELL_FED_ICON = 136000 -- Interface\Icons\Spell_Misc_Food
 
+-- Flasks and battle elixirs, by the name of the buff they give. Classic buff
+-- names are not always the item name (Elixir of Greater Firepower gives
+-- "Greater Firepower"); the new Forever ones are named like the item.
+-- Any other buff called "Flask of ..." or "... Elixir ..." counts too, except
+-- the defensive (guardian-style) elixirs below. Forever has no battle/guardian
+-- split and elixirs stack, so this row only asks for one offensive buff.
+-- Names are matched without regard to case.
+local FLASK_NAMES = {
+  -- Classic
+  "Flask of the Titans", "Supreme Power", "Distilled Wisdom", "Chromatic Resistance",
+  -- Forever: 60 Sta for 2 hours, extra bonus in Mount Hyjal, Hyjal Summit and
+  -- the Barrow Deeps
+  "Flask of Natural Accuracy", "Flask of Natural Aggression",
+  "Flask of Natural Precision", "Flask of Natural Swiftness",
+}
+local BATTLE_ELIXIR_NAMES = {
+  -- Classic (buff names)
+  "Elixir of the Mongoose", "Elixir of the Giants", "Elixir of Brute Force",
+  "Greater Agility", "Lesser Agility", "Greater Arcane Elixir", "Arcane Elixir",
+  "Greater Firepower", "Fire Power", "Shadow Power", "Frost Power",
+  "Winterfall Firewater", "Juju Power", "Juju Might",
+  -- Forever
+  "Elixir of Cunning", "Elixir of Ferocity", "Elixir of the Grizzly",
+  "Elixir of the Owl", "Elixir of the Whale", "Elixir of Sages", "Elixir of the Sages",
+  "Elixir of Greater Strength", "Elixir of Strength", "Elixir of Ogre's Strength",
+  "Elixir of Greater Intellect", "Elixir of Intellect", "Elixir of Lesser Intellect",
+  "Elixir of Greater Spirit", "Elixir of Spirit", "Elixir of Lesser Spirit",
+  "Elixir of Minor Spirit", "Elixir of Agility", "Elixir of Greater Agility",
+  "Elixir of Minor Force", "Elixir of Nature Power", "Elixir of Holy Power",
+  "Elixir of Shadow Power", "Elixir of Frost Power", "Elixir of Greater Firepower",
+  "Lesser Arcane Elixir", "Minor Arcane Elixir",
+  "Cleric's Elixir", "Greater Cleric's Elixir", "Lesser Cleric's Elixir",
+  "Minor Cleric's Elixir", "Distilled Firewater",
+}
+-- Defensive and regeneration elixirs, and flasks that are no raid flask.
+local NOT_COUNTED_NAMES = {
+  "Flask of Petrification",
+  "Elixir of Fortitude", "Elixir of Greater Fortitude", "Elixir of Major Fortitude",
+  "Elixir of the Phalanx", "Elixir of Defense", "Elixir of Minor Defense",
+  "Elixir of Lesser Defense", "Elixir of Greater Defense", "Elixir of Superior Defense",
+  "Elixir of Major Defense", "Elixir of Ironskin", "Earthen Elixir",
+  "Troll's Blood Elixir", "Major Troll's Blood Elixir",
+  "Mageblood Elixir", "Greater Mageblood Elixir", "Lesser Mageblood Elixir",
+  "Minor Mageblood Elixir", "Elixir of Major Mageblood", "Elixir of Wicked Regeneration",
+  "Elixir of Draenic Wisdom",
+}
+
+local function LowerSet(list)
+  local set = {}
+  for _, name in ipairs(list) do set[name:lower()] = true end
+  return set
+end
+local FLASKS_AND_ELIXIRS = LowerSet(FLASK_NAMES)
+for name in pairs(LowerSet(BATTLE_ELIXIR_NAMES)) do FLASKS_AND_ELIXIRS[name] = true end
+local NOT_COUNTED = LowerSet(NOT_COUNTED_NAMES)
+
+local function IsFlaskOrBattleElixir(name)
+  if type(name) ~= "string" then return false end
+  name = name:lower()
+  if NOT_COUNTED[name] then return false end
+  if FLASKS_AND_ELIXIRS[name] then return true end
+  return name:find("^flask of ") ~= nil or name:find("elixir") ~= nil
+end
+
 local function FormatTime(sec)
   sec = math.max(0, math.floor(sec))
   local floor = math.floor
@@ -49,6 +113,7 @@ local TRACKERS = {
   },
   {
     key = "camp", label = "Campfire",
+    notInRaid = true,   -- in a raid the Flask / Elixir row takes its place
     campOverlap = true, -- stats a stronger class buff covers are shown in grey
     names = { ["Camp Benefits"] = true },
     ids = {}, icons = {},
@@ -56,6 +121,14 @@ local TRACKERS = {
     -- A bar under the row shows it (see CampRemaining).
     pendingNames = { ["Camping"] = true },
     defaultIcon = 135805, -- Interface\Icons\Spell_Fire_Fire
+  },
+  {
+    -- Raids only, in place of the Campfire: a flask or a battle elixir.
+    key = "flask", label = "Flask / Elixir",
+    raidOnly = true,
+    names = {}, ids = {}, icons = {},
+    match = function(name) return IsFlaskOrBattleElixir(name) end,
+    defaultIcon = "Interface\\Icons\\INV_Potion_62", -- Flask of the Titans
   },
   {
     -- Cozy Sleeping Bag: the buff lasts about 2 hours, the bag has a 1 hour
@@ -77,12 +150,15 @@ local TRACKERS = {
   },
 }
 for _, id in ipairs(WELL_FED_IDS) do TRACKERS[1].ids[id] = true end
+local TRACKER_BY_KEY = {}
+for _, t in ipairs(TRACKERS) do TRACKER_BY_KEY[t.key] = t end
 
 local function IsSecret(v)
   return issecretvalue ~= nil and issecretvalue(v) or false
 end
 
--- Class buffs the party can provide. Only shown in a party, never in a raid.
+-- Class buffs the group can provide. In a raid every caster in the raid counts,
+-- except for buffs that only reach their own party (Battle Shout).
 local NO_MANA_CLASSES = { WARRIOR = true, ROGUE = true }
 local MELEE_CLASSES   = { WARRIOR = true, ROGUE = true, PALADIN = true, SHAMAN = true }
 local FERAL_FORMS     = { [1] = true, [5] = true, [8] = true } -- Cat, Bear, Dire Bear
@@ -119,7 +195,7 @@ local GROUP_BUFFS = {
   },
   {
     key = "bless", short = "Blessing", full = "Paladin Blessings", class = "PALADIN", icon = 135906,
-    perCaster = true, -- every paladin in the party brings one blessing
+    perCaster = true, -- every paladin in the group brings one blessing
     names = Set("Blessing of Might", "Blessing of Wisdom", "Blessing of Kings",
       "Blessing of Salvation", "Blessing of Light", "Blessing of Sanctuary",
       "Greater Blessing of Might", "Greater Blessing of Wisdom", "Greater Blessing of Kings",
@@ -128,6 +204,7 @@ local GROUP_BUFFS = {
   },
   {
     key = "shout", short = "Shout", full = "Battle Shout", class = "WARRIOR", icon = 132333,
+    partyOnly = true, -- reaches only the warrior's own party, also in a raid
     names = Set("Battle Shout"), usefulFor = FightsInMelee,
   },
 }
@@ -462,6 +539,7 @@ end
 
 local function Matches(t, name, icon, spellId)
   if name and t.names[name] then return true end
+  if name and t.match and t.match(name) then return true end
   if spellId and t.ids[spellId] then return true end
   if icon and t.icons[icon] then return true end
   return false
@@ -545,9 +623,10 @@ end
 ---------------------------------------------------------------------------
 
 local Refresh -- forward
+local TrackerVisible -- forward
 
 local function OnExpired(t)
-  if db.sound then
+  if db.sound and TrackerVisible(t) then
     Print("|cffff4040" .. t.label .. " has run out!|r")
     if SOUNDKIT and SOUNDKIT.RAID_WARNING then
       PlaySound(SOUNDKIT.RAID_WARNING, "Master")
@@ -853,8 +932,16 @@ local function HiddenAtMax(t, unit)
   return t.xpOnly and not db.bagAtMax and AtMaxLevel(unit)
 end
 
-local function TrackerVisible(t)
-  return not HiddenAtMax(t, "player")
+-- Campfire outside raids, Flask / Elixir only in raids.
+local function TrackerFitsGroup(t)
+  local raid = IsInRaid() and true or false
+  if t.raidOnly and not raid then return false end
+  if t.notInRaid and raid then return false end
+  return true
+end
+
+TrackerVisible = function(t)
+  return TrackerFitsGroup(t) and not HiddenAtMax(t, "player")
 end
 
 local function ApplyLook(row, color, iconTexture, value)
@@ -876,39 +963,60 @@ local function ApplyLook(row, color, iconTexture, value)
 end
 
 
--- Class -> number of connected party members including you; nil unless in a party.
-local function PartyClassCounts()
-  if not IsInGroup() or IsInRaid() then return nil end
-  local counts = {}
-  local function Add(unit)
+-- Class -> number of connected members, for the whole group ("all": the raid,
+-- or the party) and for your own party ("party": your raid subgroup in a raid).
+-- nil unless in a group.
+local function GroupClassCounts()
+  if not IsInGroup() then return nil end
+  local all, party = {}, {}
+  local function Add(list, unit)
+    local connected = UnitIsUnit(unit, "player") or UnitIsConnected(unit)
+    if not (IsSecret(connected) or connected) then return end
     local _, class = UnitClass(unit)
-    if class and not IsSecret(class) then counts[class] = (counts[class] or 0) + 1 end
+    if class and not IsSecret(class) then list[class] = (list[class] or 0) + 1 end
   end
-  Add("player")
-  for i = 1, GetNumSubgroupMembers() do
-    local unit = "party" .. i
-    local connected = UnitIsConnected(unit)
-    if IsSecret(connected) or connected then Add(unit) end
+  -- party1-4 are the members of your own subgroup, in a raid too.
+  Add(party, "player")
+  for i = 1, GetNumSubgroupMembers() do Add(party, "party" .. i) end
+  if IsInRaid() then
+    for i = 1, GetNumGroupMembers() do Add(all, "raid" .. i) end
+  else
+    for class, n in pairs(party) do all[class] = n end
   end
-  return counts
+  return { all = all, party = party }
 end
 
--- The party buffs that matter for you: list of { buff, have, want }, or nil if
--- you are not in a party or nobody in it can provide anything useful.
+-- Blessings of one kind don't stack, so no more than this many can be on you.
+local MAX_BLESSINGS = 6
+
+-- How many group members can cast this buff on you.
+local function CasterCount(b, roster)
+  local list = b.partyOnly and roster.party or roster.all
+  return list[b.class] or 0
+end
+
+-- How many of this buff you should have: one per paladin for blessings.
+local function WantedCount(b, casters)
+  if b.perCaster then return math.min(casters, MAX_BLESSINGS) end
+  return 1
+end
+
+-- The group buffs that matter for you: list of { buff, have, want }, or nil if
+-- you are not in a group or nobody in it can provide anything useful.
 local function PartyBuffStatus()
-  local counts = PartyClassCounts()
-  if not counts then return nil end
+  local roster = GroupClassCounts()
+  if not roster then return nil end
   local _, myClass = UnitClass("player")
   local now = GetTime()
   local items = {}
   for _, b in ipairs(GROUP_BUFFS) do
-    local casters = counts[b.class] or 0
+    local casters = CasterCount(b, roster)
     if casters > 0 and b.usefulFor(myClass) then
       local have = 0
       for _, expires in ipairs(groupPresent[b.key] or {}) do
         if expires == 0 or expires > now then have = have + 1 end
       end
-      local want = b.perCaster and casters or 1
+      local want = WantedCount(b, casters)
       items[#items + 1] = { buff = b, have = math.min(have, want), want = want }
     end
   end
@@ -924,6 +1032,7 @@ local function UpdatePartyRow()
     return true
   end
   row:Show()
+  row.label:SetText(IsInRaid() and "Raid Buffs" or "Party Buffs")
 
   local missing = {}
   for _, item in ipairs(items) do
@@ -978,7 +1087,9 @@ local function CreateMainFrame()
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:AddLine("BuffWatcher Forever")
     for _, t in ipairs(TRACKERS) do
-      GameTooltip:AddDoubleLine(t.label, StatusLine(state[t.key]), 1, 1, 1, 1, 1, 1)
+      if TrackerVisible(t) then
+        GameTooltip:AddDoubleLine(t.label, StatusLine(state[t.key]), 1, 1, 1, 1, 1, 1)
+      end
     end
     for _, item in ipairs(PartyBuffStatus() or {}) do
       local status = item.have >= item.want and "active"
@@ -987,7 +1098,7 @@ local function CreateMainFrame()
       GameTooltip:AddDoubleLine(item.buff.full, status, 1, 1, 1, 1, 1, 1)
     end
     local camp = state.camp
-    if camp and camp.active and camp.parts then
+    if camp and camp.active and camp.parts and TrackerVisible(TRACKER_BY_KEY.camp) then
       for _, part in ipairs(camp.parts) do
         local by = CampOverride(part.key)
         if by then
@@ -1184,23 +1295,26 @@ local function CreateHeaderButton(name, tooltip, onClick, prominent)
   return b
 end
 
--- You plus your party members (never a raid).
+-- You plus your party members; in a raid your own subgroup.
 local function GridUnits()
   local units = { "player" }
-  if IsInGroup() and not IsInRaid() then
+  if IsInGroup() then
     for i = 1, GetNumSubgroupMembers() do units[#units + 1] = "party" .. i end
   end
   return units
 end
 
--- Food and Campfire for everyone, plus every class buff someone in the party can cast.
-local function GridColumns(counts)
+-- Food and Campfire (Flask / Elixir in a raid) for everyone, plus every class
+-- buff someone in the group can cast.
+local function GridColumns(roster)
   local columns = {}
   for _, t in ipairs(TRACKERS) do
-    columns[#columns + 1] = { key = t.key, label = t.label, icon = t.defaultIcon, tracker = t }
+    if TrackerFitsGroup(t) then
+      columns[#columns + 1] = { key = t.key, label = t.label, icon = t.defaultIcon, tracker = t }
+    end
   end
   for _, b in ipairs(GROUP_BUFFS) do
-    if (counts[b.class] or 0) > 0 then
+    if CasterCount(b, roster) > 0 then
       columns[#columns + 1] = { key = b.key, label = b.full, icon = b.icon, buff = b }
     end
   end
@@ -1256,7 +1370,7 @@ end
 
 -- state ("yes", "low", "no", "partial", "na", "unknown"), short text, and
 -- details of the matching buff (for blessings the one that runs out first).
-local function CellState(unit, column, buffs, counts)
+local function CellState(unit, column, buffs, roster)
   if column.buff and not UnitWantsBuff(unit, column.buff) then return "na", "-" end
   if column.tracker and HiddenAtMax(column.tracker, unit) then return "na", "-" end
   if not buffs then return "unknown", "?" end
@@ -1273,7 +1387,7 @@ local function CellState(unit, column, buffs, counts)
       if not first or ExpiresAt(a) < ExpiresAt(first) then first = a end
     end
   end
-  local want = b.perCaster and (counts[b.class] or 1) or 1
+  local want = math.max(1, WantedCount(b, CasterCount(b, roster)))
   if have >= want then return Present(first) end
   if have > 0 then return "partial", have .. "/" .. want, AuraInfo(first) end
   return "no"
@@ -1390,9 +1504,11 @@ end
 local function UpdateGrid()
   if not grid then return end
   local _, myClass = UnitClass("player")
-  local counts = PartyClassCounts() or { [myClass or "?"] = 1 }
-  local columns, units = GridColumns(counts), GridUnits()
+  local solo = { [myClass or "?"] = 1 }
+  local roster = GroupClassCounts() or { all = solo, party = solo }
+  local columns, units = GridColumns(roster), GridUnits()
   grid.columns = columns
+  grid.title:SetText(IsInRaid() and "Raid Group Buffs" or "Party Buffs")
 
   for j, column in ipairs(columns) do
     local h = grid.headers[j] or CreateGridHeader(j)
@@ -1424,7 +1540,7 @@ local function UpdateGrid()
       local cell = row.cells[j] or CreateGridCell(row, j)
       cell.unitName, cell.columnLabel = row.name:GetText(), column.label
       cell:Show()
-      SetCell(cell, CellState(unit, column, buffs, counts))
+      SetCell(cell, CellState(unit, column, buffs, roster))
     end
     for j = #columns + 1, #row.cells do row.cells[j]:Hide() end
   end
