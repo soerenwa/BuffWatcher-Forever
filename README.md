@@ -1,6 +1,6 @@
 # BuffWatcher Forever
 
-A small, clean buff tracker for **World of Warcraft: Forever**. One look tells you whether you are Well Fed, have your Campfire buff, your Sleeping Bag XP bonus and every class buff your party can give you.
+A small, clean buff tracker for **World of Warcraft: Forever**. One look tells you whether you are Well Fed, have your Campfire buff (or your flask in a raid), your Sleeping Bag XP bonus and every class buff your group can give you.
 
 ## Features
 
@@ -8,9 +8,10 @@ A small, clean buff tracker for **World of Warcraft: Forever**. One look tells y
 - **Stats at a glance.** Each active buff shows what it gives, read from its tooltip, for example `25 Str, 10 Sta` or `3% XP, 1h 12m left`.
 - **Green panel** when all your buffs are up.
 - **Sleeping Bag timer.** While you lie in the bag, a bar counts down to the next Well-Rested refresh.
+- **Flask / Elixir row in raids.** In a raid the Campfire row is replaced by a Flask / Elixir row. It is white while a flask or a battle elixir is active and shows its stats.
 - **Campfire timer.** While you sit at a campfire, a bar under the Campfire row counts down until Camp Benefits arrives.
-- **Party Buffs row** (party only, not in raids). It checks Fortitude, Mark of the Wild, Arcane Intellect, one Blessing per Paladin and Battle Shout. Battle Shout counts for melee only, including Druids in Cat or Bear Form.
-- **Party grid.** Shows who in your party has which buff. Hover a cell for the time left. A check turns orange when less than 20% of a buff's duration is left.
+- **Party Buffs / Raid Buffs row.** It checks Fortitude, Mark of the Wild, Arcane Intellect, one Blessing per Paladin and Battle Shout. In a raid every Paladin in the raid counts, so with two Paladins you need two Blessings (`Blessing 1/2`). Battle Shout only reaches its own party, so it only counts Warriors in your raid group. It counts for melee only, including Druids in Cat or Bear Form.
+- **Party grid.** Shows who in your party (in a raid: your raid group) has which buff. Hover a cell for the time left. A check turns orange when less than 20% of a buff's duration is left.
 - **Campfire overlap.** Camp objects don't stack with the matching class buff, and the class buff is always stronger. Campfire stats that are already covered are shown in grey.
 - **Warnings.** A chat message and a sound play when a buff runs out, plus an optional chat warning a few minutes before.
 - **Header bar** with the party grid, options, a horizontal/vertical layout switch and a lock.
