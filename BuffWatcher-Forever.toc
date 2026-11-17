@@ -2,7 +2,7 @@
 ## Title: BuffWatcher Forever
 ## Notes: Shows Well Fed, Camp Benefits (Flask / Elixir in raids), the Sleeping Bag buff and party or raid buffs.
 ## Author: soeren
-## Version: 1.14.0
+## Version: 1.14.1
 ## SavedVariables: BuffWatcherForeverDB
 
 BuffWatcher-Forever.lua

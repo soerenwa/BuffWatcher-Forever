@@ -29,34 +29,68 @@ local WELL_FED_IDS = {
 }
 local WELL_FED_ICON = 136000 -- Interface\Icons\Spell_Misc_Food
 
--- Flasks and battle elixirs, by the name of the buff they give (which is not
--- always the item name: Elixir of Greater Firepower gives "Greater Firepower").
+-- Flasks and battle elixirs, by the name of the buff they give. Classic buff
+-- names are not always the item name (Elixir of Greater Firepower gives
+-- "Greater Firepower"); the new Forever ones are named like the item.
 -- Any other buff called "Flask of ..." or "... Elixir ..." counts too, except
--- the guardian elixirs below.
+-- the defensive (guardian-style) elixirs below. Forever has no battle/guardian
+-- split and elixirs stack, so this row only asks for one offensive buff.
+-- Names are matched without regard to case.
 local FLASK_NAMES = {
-  ["Flask of the Titans"] = true, ["Supreme Power"] = true, ["Distilled Wisdom"] = true,
-  ["Chromatic Resistance"] = true,
+  -- Classic
+  "Flask of the Titans", "Supreme Power", "Distilled Wisdom", "Chromatic Resistance",
+  -- Forever: 60 Sta for 2 hours, extra bonus in Mount Hyjal, Hyjal Summit and
+  -- the Barrow Deeps
+  "Flask of Natural Accuracy", "Flask of Natural Aggression",
+  "Flask of Natural Precision", "Flask of Natural Swiftness",
 }
 local BATTLE_ELIXIR_NAMES = {
-  ["Elixir of the Mongoose"] = true, ["Elixir of the Giants"] = true,
-  ["Elixir of Brute Force"] = true, ["Greater Agility"] = true, ["Lesser Agility"] = true,
-  ["Greater Arcane Elixir"] = true, ["Arcane Elixir"] = true,
-  ["Greater Firepower"] = true, ["Fire Power"] = true, ["Shadow Power"] = true,
-  ["Frost Power"] = true, ["Winterfall Firewater"] = true,
-  ["Juju Power"] = true, ["Juju Might"] = true,
+  -- Classic (buff names)
+  "Elixir of the Mongoose", "Elixir of the Giants", "Elixir of Brute Force",
+  "Greater Agility", "Lesser Agility", "Greater Arcane Elixir", "Arcane Elixir",
+  "Greater Firepower", "Fire Power", "Shadow Power", "Frost Power",
+  "Winterfall Firewater", "Juju Power", "Juju Might",
+  -- Forever
+  "Elixir of Cunning", "Elixir of Ferocity", "Elixir of the Grizzly",
+  "Elixir of the Owl", "Elixir of the Whale", "Elixir of Sages", "Elixir of the Sages",
+  "Elixir of Greater Strength", "Elixir of Strength", "Elixir of Ogre's Strength",
+  "Elixir of Greater Intellect", "Elixir of Intellect", "Elixir of Lesser Intellect",
+  "Elixir of Greater Spirit", "Elixir of Spirit", "Elixir of Lesser Spirit",
+  "Elixir of Minor Spirit", "Elixir of Agility", "Elixir of Greater Agility",
+  "Elixir of Minor Force", "Elixir of Nature Power", "Elixir of Holy Power",
+  "Elixir of Shadow Power", "Elixir of Frost Power", "Elixir of Greater Firepower",
+  "Lesser Arcane Elixir", "Minor Arcane Elixir",
+  "Cleric's Elixir", "Greater Cleric's Elixir", "Lesser Cleric's Elixir",
+  "Minor Cleric's Elixir", "Distilled Firewater",
 }
-local GUARDIAN_ELIXIR_NAMES = {
-  ["Elixir of the Sages"] = true, ["Elixir of Major Defense"] = true,
-  ["Elixir of Ironskin"] = true, ["Elixir of Draenic Wisdom"] = true,
-  ["Elixir of Major Fortitude"] = true, ["Elixir of Major Mageblood"] = true,
-  ["Earthen Elixir"] = true,
+-- Defensive and regeneration elixirs, and flasks that are no raid flask.
+local NOT_COUNTED_NAMES = {
+  "Flask of Petrification",
+  "Elixir of Fortitude", "Elixir of Greater Fortitude", "Elixir of Major Fortitude",
+  "Elixir of the Phalanx", "Elixir of Defense", "Elixir of Minor Defense",
+  "Elixir of Lesser Defense", "Elixir of Greater Defense", "Elixir of Superior Defense",
+  "Elixir of Major Defense", "Elixir of Ironskin", "Earthen Elixir",
+  "Troll's Blood Elixir", "Major Troll's Blood Elixir",
+  "Mageblood Elixir", "Greater Mageblood Elixir", "Lesser Mageblood Elixir",
+  "Minor Mageblood Elixir", "Elixir of Major Mageblood", "Elixir of Wicked Regeneration",
+  "Elixir of Draenic Wisdom",
 }
+
+local function LowerSet(list)
+  local set = {}
+  for _, name in ipairs(list) do set[name:lower()] = true end
+  return set
+end
+local FLASKS_AND_ELIXIRS = LowerSet(FLASK_NAMES)
+for name in pairs(LowerSet(BATTLE_ELIXIR_NAMES)) do FLASKS_AND_ELIXIRS[name] = true end
+local NOT_COUNTED = LowerSet(NOT_COUNTED_NAMES)
 
 local function IsFlaskOrBattleElixir(name)
   if type(name) ~= "string" then return false end
-  if FLASK_NAMES[name] or BATTLE_ELIXIR_NAMES[name] then return true end
-  if name:find("^Flask of ") then return true end
-  return name:find("Elixir") ~= nil and not GUARDIAN_ELIXIR_NAMES[name]
+  name = name:lower()
+  if NOT_COUNTED[name] then return false end
+  if FLASKS_AND_ELIXIRS[name] then return true end
+  return name:find("^flask of ") ~= nil or name:find("elixir") ~= nil
 end
 
 local function FormatTime(sec)
