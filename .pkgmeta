@@ -2,3 +2,7 @@ package-as: BuffWatcher-Forever
 
 ignore:
   - media
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
